@@ -1,6 +1,6 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.8.0
+//                            V0.1
 //                     Ultra-Embedded.com
 //                        Copyright 2020
 //
@@ -71,7 +71,46 @@ module ddr3_axi_pmem
 
 
 
-wire inport_accept_w;
+//-------------------------------------------------------------
+// Assertions
+//-------------------------------------------------------------
+localparam AXI4_BURST_FIXED = 2'd0;
+localparam AXI4_BURST_INCR  = 2'd1;
+localparam AXI4_BURST_WRAP  = 2'd2;
+
+`ifdef SIMULATION
+wire [31:0] awlen_ext_w   = {24'b0, axi_awlen_i};
+wire [31:0] arlen_ext_w   = {24'b0, axi_arlen_i};
+wire [31:0] awaddr_mask_w = ((awlen_ext_w + 1) * 4) - 1;
+wire [31:0] araddr_mask_w = ((arlen_ext_w + 1) * 4) - 1;
+
+always @ (posedge clk_i or posedge rst_i)
+if (rst_i)
+    ;
+else 
+begin
+    if (axi_awvalid_i && axi_awburst_i == AXI4_BURST_FIXED)
+    begin
+        $display("ERROR: Fixed bursts not supported");
+        $fatal;
+    end
+    if (axi_arvalid_i && axi_arburst_i == AXI4_BURST_FIXED)
+    begin
+        $display("ERROR: Fixed bursts not supported yet");
+        $fatal;
+    end
+    if (axi_awvalid_i && axi_awlen_i != 8'd0 && ((axi_awaddr_i & awaddr_mask_w) != 32'b0))
+    begin
+        $display("ERROR: Non-aligned bursts not supported yet");
+        $fatal;
+    end
+    if (axi_arvalid_i && axi_arlen_i != 8'd0 && ((axi_araddr_i & araddr_mask_w) != 32'b0))
+    begin
+        $display("ERROR: Non-aligned bursts not supported yet");
+        $fatal;
+    end
+end
+`endif
 
 //-------------------------------------------------------------
 // Request Counter
@@ -194,7 +233,7 @@ wire [31:0] awaddr_w  = awvalid_q ? awaddr_q : axi_awaddr_i;
 wire [7:0]  awlen_w   = awvalid_q ? awlen_q  : axi_awlen_i;
 wire [3:0]  awid_w    = awvalid_q ? awid_q   : axi_awid_i;
 
-// TODO
+wire   inport_accept_w;
 assign axi_awready_o = write_enable_w & ~awvalid_q;
 assign axi_wready_o  = write_enable_w & awvalid_w & inport_accept_w;
 assign axi_arready_o = read_enable_w & inport_accept_w;

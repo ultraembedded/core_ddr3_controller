@@ -1,6 +1,6 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.8.0
+//                            V0.1
 //                     Ultra-Embedded.com
 //                        Copyright 2020
 //
