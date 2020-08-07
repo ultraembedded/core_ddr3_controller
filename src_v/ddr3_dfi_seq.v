@@ -82,7 +82,11 @@ localparam CYCLE_TIME_NS     = 1000 / DDR_MHZ;
 localparam DDR_TRCD_CYCLES   = (15 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
 localparam DDR_TRP_CYCLES    = (15 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
 localparam DDR_TRFC_CYCLES   = (260 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
-localparam DDR_TWTR_CYCLES   = 2 + 1;
+localparam DDR_TWTR_CYCLES   = 4 + 1;
+
+// Standard R/W -> W->R (non-sequential)
+localparam DDR_RW_NONSEQ_CYCLES = DDR_WRITE_LATENCY + DDR_BURST_LEN + DDR_TWTR_CYCLES;
+localparam DDR_RW_SEQ_CYCLES    = DDR_RW_NONSEQ_CYCLES + 1 - DDR_BURST_LEN;
 
 localparam CMD_W             = 4;
 localparam CMD_NOP           = 4'b0111;
@@ -152,8 +156,8 @@ else if (command_i == CMD_WRITE && delay_q == {DELAY_W{1'b0}})
 else
     wr_accept_q       <= {1'b0, wr_accept_q[CMD_ACCEPT_W-1:1]};
 
-wire read_early_accept_w  = (last_cmd_q == CMD_READ  && command_i == CMD_READ && delay_q == (DDR_WRITE_LATENCY + DDR_BURST_LEN));
-wire write_early_accept_w = (last_cmd_q == CMD_WRITE && command_i == CMD_WRITE && delay_q == (DDR_WRITE_LATENCY + DDR_BURST_LEN));
+wire read_early_accept_w  = (last_cmd_q == CMD_READ  && command_i == CMD_READ && delay_q == DDR_RW_SEQ_CYCLES);
+wire write_early_accept_w = (last_cmd_q == CMD_WRITE && command_i == CMD_WRITE && delay_q == DDR_RW_SEQ_CYCLES);
 
 assign accept_o  = (delay_q == {DELAY_W{1'b0}}) || read_early_accept_w || write_early_accept_w || (command_i == CMD_NOP);
 
@@ -211,7 +215,7 @@ begin
         //-----------------------------------------
         else if (command_i == CMD_READ || command_i == CMD_WRITE)
         begin
-            delay_r = DDR_WRITE_LATENCY + DDR_BURST_LEN + DDR_TWTR_CYCLES;
+            delay_r = DDR_RW_NONSEQ_CYCLES;
         end
         //-----------------------------------------
         // PRECHARGE
@@ -242,7 +246,7 @@ begin
         // Read to Read, Write to Write
         if (read_early_accept_w || write_early_accept_w)
         begin
-            delay_r = DDR_WRITE_LATENCY + DDR_BURST_LEN + DDR_TWTR_CYCLES;
+            delay_r = DDR_RW_NONSEQ_CYCLES;
         end
     end
 end
@@ -257,14 +261,6 @@ else
 //-----------------------------------------------------------------
 // Drive Flops
 //-----------------------------------------------------------------
-// Xilinx placement pragmas:
-//synthesis attribute IOB of command_q is "TRUE"
-//synthesis attribute IOB of addr_q is "TRUE"
-//synthesis attribute IOB of dfi_wrdata_mask_q is "TRUE"
-//synthesis attribute IOB of cke_q is "TRUE"
-//synthesis attribute IOB of bank_q is "TRUE"
-//synthesis attribute IOB of dfi_wrdata_q is "TRUE"
-
 reg [CMD_W-1:0]      command_q;
 reg [DDR_ROW_W-1:0]  addr_q;
 reg [DDR_BANK_W-1:0] bank_q;

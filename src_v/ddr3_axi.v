@@ -28,9 +28,9 @@ module ddr3_axi
 // Params
 //-----------------------------------------------------------------
 #(
-     parameter DDR_MHZ          = 25
-    ,parameter DDR_WRITE_LATENCY = 6
-    ,parameter DDR_READ_LATENCY = 5
+     parameter DDR_MHZ          = 50
+    ,parameter DDR_WRITE_LATENCY = 4
+    ,parameter DDR_READ_LATENCY = 4
 )
 //-----------------------------------------------------------------
 // Ports

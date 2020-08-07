@@ -306,6 +306,7 @@ reg         rd_q;
 reg         wr_last_q;
 reg [7:0]   len_q;
 reg [3:0]   id_q;
+wire        ram_accept_w;
 
 always @ (posedge clk_i or posedge rst_i)
 if (rst_i)
@@ -321,7 +322,7 @@ begin
     id_q         <= 4'b0;
     wr_last_q    <= 1'b1;
 end
-else if ((wr_q || rd_q) && !ram_accept_i)
+else if ((wr_q || rd_q) && !ram_accept_w)
     ;
 else if (read_valid_w && inport_accept_w)
 begin
@@ -358,14 +359,49 @@ begin
     wr_last_q   <= 1'b0;
 end
 
-assign ram_wr_o         = {16{wr_q}} & write_mask_q;
-assign ram_rd_o         = rd_q;
-assign ram_addr_o       = {addr_q[31:4], 4'b0};
-assign ram_write_data_o = write_data_q;
-assign ram_req_id_o     = {id_q, len_q, addr_q[3:2], rd_q, rd_q | wr_last_q};
+wire [15:0]  ram_wr_w         = {16{wr_q}} & write_mask_q;
+wire         ram_rd_w         = rd_q;
+wire [31:0]  ram_addr_w       = {addr_q[31:4], 4'b0};
+wire [127:0] ram_write_data_w = write_data_q;
+wire [15:0]  ram_req_id_w     = {id_q, len_q, addr_q[3:2], rd_q, rd_q | wr_last_q};
 
-assign inport_accept_w      = ((!wr_q && !rd_q) || ram_accept_i) && (rd_remain_q == 8'b0);
+assign inport_accept_w      = ((!wr_q && !rd_q) || ram_accept_w) && (rd_remain_q == 8'b0);
 
+//-----------------------------------------------------------------
+// Request FIFO - decouple AXI logic from RAM port
+//-----------------------------------------------------------------
+wire        ram_rd_out_w;
+wire [15:0] ram_wr_out_w;
+wire        ram_valid_out_w;
+
+ddr3_axi_pmem_fifo
+#( 
+     .WIDTH(16 + 128 + 32 + 1 + 16)
+    ,.DEPTH(2)
+    ,.ADDR_W(1)
+)
+u_request
+(
+    .clk_i(clk_i),
+    .rst_i(rst_i),
+
+    // Input
+    .data_in_i({ram_req_id_w, ram_write_data_w, ram_addr_w, ram_rd_w, ram_wr_w}),
+    .push_i((|ram_wr_w) || ram_rd_w),
+    .accept_o(ram_accept_w),
+
+    // Output
+    .pop_i(ram_accept_i),
+    .data_out_o({ram_req_id_o, ram_write_data_o, ram_addr_o, ram_rd_out_w, ram_wr_out_w}),
+    .valid_o(ram_valid_out_w)
+);
+
+assign ram_rd_o = ram_valid_out_w       & ram_rd_out_w;
+assign ram_wr_o = {16{ram_valid_out_w}} & ram_wr_out_w;
+
+//-----------------------------------------------------------------
+// Response state
+//-----------------------------------------------------------------
 wire         resp_valid_w;
 wire         resp_last_w;
 wire         resp_rd_w;
