@@ -1,14 +1,14 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.1
+//                            V0.5
 //                     Ultra-Embedded.com
-//                        Copyright 2020
+//                     Copyright 2020-21
 //
 //                   admin@ultra-embedded.com
 //
 //                     License: Apache 2.0
 //-----------------------------------------------------------------
-// Copyright 2020 Ultra-Embedded.com
+// Copyright 2020-21 Ultra-Embedded.com
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
 // limitations under the License.
 //-----------------------------------------------------------------
 
-module ddr3_axi_core
+module ddr3_core
 //-----------------------------------------------------------------
 // Params
 //-----------------------------------------------------------------
@@ -34,6 +34,7 @@ module ddr3_axi_core
     ,parameter DDR_COL_W        = 10
     ,parameter DDR_BANK_W       = 3
     ,parameter DDR_ROW_W        = 15
+    ,parameter DDR_BRC_MODE     = 0
 )
 //-----------------------------------------------------------------
 // Ports
@@ -42,6 +43,9 @@ module ddr3_axi_core
     // Inputs
      input           clk_i
     ,input           rst_i
+    ,input           cfg_enable_i
+    ,input           cfg_stb_i
+    ,input  [ 31:0]  cfg_data_i
     ,input  [ 15:0]  inport_wr_i
     ,input           inport_rd_i
     ,input  [ 31:0]  inport_addr_i
@@ -52,6 +56,7 @@ module ddr3_axi_core
     ,input  [  1:0]  dfi_rddata_dnv_i
 
     // Outputs
+    ,output          cfg_stall_o
     ,output          inport_accept_o
     ,output          inport_ack_o
     ,output          inport_error_o
@@ -78,7 +83,11 @@ module ddr3_axi_core
 // Defines / Local params
 //-----------------------------------------------------------------
 localparam DDR_BANKS         = 2 ** DDR_BANK_W;
+`ifdef XILINX_SIMULATOR
+localparam DDR_START_DELAY   = 60000 / (1000 / DDR_MHZ); // 60uS
+`else
 localparam DDR_START_DELAY   = 600000 / (1000 / DDR_MHZ); // 600uS
+`endif
 localparam DDR_REFRESH_CYCLES= (64000*DDR_MHZ) / 8192;
 localparam DDR_BURST_LEN     = 8;
 
@@ -127,7 +136,8 @@ wire [127:0]  ram_write_data_w = inport_write_data_i;
 wire [127:0]  ram_read_data_w;
 wire          ram_ack_w;
 
-wire          ram_req_w = (ram_wr_w != 16'b0) | ram_rd_w;
+wire          id_fifo_space_w;
+wire          ram_req_w     = ((ram_wr_w != 16'b0) | ram_rd_w) && id_fifo_space_w;
 
 assign inport_ack_o       = ram_ack_w;
 assign inport_read_data_o = ram_read_data_w;
@@ -154,8 +164,10 @@ reg  [STATE_W-1:0]     target_state_q;
 
 // Address bits (RBC mode)
 wire [DDR_ROW_W-1:0]  addr_col_w  = {{(DDR_ROW_W-DDR_COL_W){1'b0}}, ram_addr_w[DDR_COL_W:2], 1'b0};
-wire [DDR_BANK_W-1:0] addr_bank_w = ram_addr_w[DDR_COL_W+1+3-1:DDR_COL_W+1];
-wire [DDR_ROW_W-1:0]  addr_row_w  = ram_addr_w[DDR_ROW_W+DDR_COL_W+3:DDR_COL_W+3+1];
+wire [DDR_ROW_W-1:0]  addr_row_w  = DDR_BRC_MODE ? ram_addr_w[DDR_ROW_W+DDR_COL_W:DDR_COL_W+1] :            // BRC
+                                                   ram_addr_w[DDR_ROW_W+DDR_COL_W+3:DDR_COL_W+3+1];         // RBC
+wire [DDR_BANK_W-1:0] addr_bank_w = DDR_BRC_MODE ? ram_addr_w[DDR_ROW_W+DDR_COL_W+3:DDR_ROW_W+DDR_COL_W+1]: // BRC
+                                                   ram_addr_w[DDR_COL_W+1+3-1:DDR_COL_W+1];                 // RBC
 
 //-----------------------------------------------------------------
 // SDRAM State Machine
@@ -179,10 +191,13 @@ begin
     //-----------------------------------------
     STATE_IDLE :
     begin
+        // Disabled
+        if (!cfg_enable_i)
+            next_state_r = STATE_IDLE;
         // Pending refresh
         // Note: tRAS (open row time) cannot be exceeded due to periodic
         //        auto refreshes.
-        if (refresh_q)
+        else if (refresh_q)
         begin
             // Close open rows, then refresh
             if (|row_open_q)
@@ -272,14 +287,14 @@ begin
 end
 
 // Record target state
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     target_state_q   <= STATE_IDLE;
 else if (cmd_accept_w)
     target_state_q   <= target_state_r;
 
 // Update state
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     state_q   <= STATE_INIT;
 else if (cmd_accept_w)
@@ -291,7 +306,7 @@ else if (cmd_accept_w)
 localparam REFRESH_CNT_W = 20;
 
 reg [REFRESH_CNT_W-1:0] refresh_timer_q;
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     refresh_timer_q <= DDR_START_DELAY;
 else if (refresh_timer_q == {REFRESH_CNT_W{1'b0}})
@@ -299,7 +314,7 @@ else if (refresh_timer_q == {REFRESH_CNT_W{1'b0}})
 else
     refresh_timer_q <= refresh_timer_q - 1;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     refresh_q <= 1'b0;
 else if (refresh_timer_q == {REFRESH_CNT_W{1'b0}})
@@ -312,7 +327,7 @@ else if (state_q == STATE_REFRESH)
 //-----------------------------------------------------------------
 integer idx;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     for (idx=0;idx<DDR_BANKS;idx=idx+1)
@@ -327,7 +342,10 @@ begin
     // STATE_IDLE / Default (delays)
     //-----------------------------------------
     default:
-        ;
+    begin
+        if (!cfg_enable_i)
+            row_open_q <= {DDR_BANKS{1'b0}};
+    end
     //-----------------------------------------
     // STATE_ACTIVATE
     //-----------------------------------------
@@ -427,6 +445,14 @@ begin
         end
     end
     //-----------------------------------------
+    // STATE_IDLE
+    //-----------------------------------------
+    STATE_IDLE :
+    begin
+        if (!cfg_enable_i && cfg_stb_i)
+            {cke_r, addr_r, bank_r, command_r} = cfg_data_i[CMD_W + DDR_ROW_W + DDR_BANK_W:0];
+    end
+    //-----------------------------------------
     // STATE_ACTIVATE
     //-----------------------------------------
     STATE_ACTIVATE :
@@ -500,7 +526,7 @@ end
 //-----------------------------------------------------------------
 reg write_ack_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     write_ack_q <= 1'b0;
 else
@@ -509,8 +535,8 @@ else
 ddr3_fifo
 #(
      .WIDTH(16)
-    ,.DEPTH(4)
-    ,.ADDR_W(2)
+    ,.DEPTH(8)
+    ,.ADDR_W(3)
 )
 u_id_fifo
 (
@@ -519,7 +545,7 @@ u_id_fifo
 
     ,.push_i(ram_req_w & ram_accept_w)
     ,.data_in_i(inport_req_id_i)
-    ,.accept_o()
+    ,.accept_o(id_fifo_space_w)
 
     ,.valid_o()
     ,.data_out_o(inport_resp_id_o)
@@ -530,6 +556,9 @@ assign ram_ack_w = sdram_rd_valid_w || write_ack_q;
 
 // Accept command in READ or WRITE0 states
 assign ram_accept_w = (state_q == STATE_READ || state_q == STATE_WRITE) && cmd_accept_w;
+
+// Config stall
+assign cfg_stall_o = ~(state_q == STATE_IDLE && cmd_accept_w);
 
 //-----------------------------------------------------------------
 // DDR3 DFI Interface
@@ -649,7 +678,7 @@ reg [COUNT_W-1:0]       count;
 //-----------------------------------------------------------------
 // Sequential
 //-----------------------------------------------------------------
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     count   <= {(COUNT_W) {1'b0}};

@@ -1,14 +1,14 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.1
+//                            V0.5
 //                     Ultra-Embedded.com
-//                        Copyright 2020
+//                     Copyright 2020-21
 //
 //                   admin@ultra-embedded.com
 //
 //                     License: Apache 2.0
 //-----------------------------------------------------------------
-// Copyright 2020 Ultra-Embedded.com
+// Copyright 2020-21 Ultra-Embedded.com
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -82,7 +82,7 @@ localparam CYCLE_TIME_NS     = 1000 / DDR_MHZ;
 localparam DDR_TRCD_CYCLES   = (15 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
 localparam DDR_TRP_CYCLES    = (15 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
 localparam DDR_TRFC_CYCLES   = (260 + (CYCLE_TIME_NS-1)) / CYCLE_TIME_NS;
-localparam DDR_TWTR_CYCLES   = 4 + 1;
+localparam DDR_TWTR_CYCLES   = 5 + 1;
 
 // Standard R/W -> W->R (non-sequential)
 localparam DDR_RW_NONSEQ_CYCLES = DDR_WRITE_LATENCY + DDR_BURST_LEN + DDR_TWTR_CYCLES;
@@ -101,7 +101,7 @@ localparam CMD_LOAD_MODE     = 4'b0000;
 localparam tPHY_WRLAT        = DDR_WRITE_LATENCY-1;
 localparam tPHY_RDLAT        = DDR_READ_LATENCY-1;
 
-localparam DELAY_W = 4;
+localparam DELAY_W = 6;
 
 reg [DELAY_W-1:0] delay_q;
 reg [DELAY_W-1:0] delay_r;
@@ -137,7 +137,7 @@ u_write_fifo
 // Last command
 //-----------------------------------------------------------------
 reg [CMD_W-1:0] last_cmd_q;
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     last_cmd_q       <= CMD_NOP;
 else if (accept_o && command_i != CMD_NOP)
@@ -148,7 +148,7 @@ else if (accept_o && command_i != CMD_NOP)
 //-----------------------------------------------------------------
 localparam CMD_ACCEPT_W = 9;
 reg [CMD_ACCEPT_W-1:0] wr_accept_q;
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     wr_accept_q       <= {(CMD_ACCEPT_W){1'b0}};
 else if (command_i == CMD_WRITE && delay_q == {DELAY_W{1'b0}})
@@ -166,7 +166,7 @@ assign accept_o  = (delay_q == {DELAY_W{1'b0}}) || read_early_accept_w || write_
 //-----------------------------------------------------------------
 localparam WR_SHIFT_W = tPHY_WRLAT+DDR_BURST_LEN;
 reg [WR_SHIFT_W-1:0] wr_en_q;
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     wr_en_q       <= {(WR_SHIFT_W){1'b0}};
 else if (command_i == CMD_WRITE && accept_o)
@@ -181,7 +181,7 @@ wire wr_en_w = wr_en_q[0];
 //-----------------------------------------------------------------
 localparam RD_SHIFT_W = tPHY_RDLAT+DDR_BURST_LEN;
 reg [RD_SHIFT_W-1:0] rd_en_q;
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     rd_en_q       <= {(RD_SHIFT_W){1'b0}};
 else if (command_i == CMD_READ && accept_o)
@@ -252,7 +252,7 @@ begin
 end
 /* verilator lint_on WIDTH */
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     delay_q <= {DELAY_W{1'b0}};
 else
@@ -266,7 +266,7 @@ reg [DDR_ROW_W-1:0]  addr_q;
 reg [DDR_BANK_W-1:0] bank_q;
 reg                  cke_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     command_q       <= CMD_NOP;
@@ -286,7 +286,7 @@ begin
     bank_q          <= {DDR_BANK_W{1'b0}};
 end
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     cke_q           <= 1'b0; 
 else
@@ -309,7 +309,7 @@ reg [DDR_DATA_W-1:0] dfi_wrdata_q;
 reg [DDR_DQM_W-1:0]  dfi_wrdata_mask_q;
 reg [1:0] dfi_wr_idx_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     dfi_wrdata_q        <= {DDR_DATA_W{1'b0}};
@@ -348,7 +348,7 @@ assign dfi_wrdata_mask_o = dfi_wrdata_mask_q;
 // Make sure dfi_wrdata_en is synchronous
 reg dfi_wrdata_en_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     dfi_wrdata_en_q <= 1'b0;
 else
@@ -359,7 +359,7 @@ assign dfi_wrdata_en_o   = dfi_wrdata_en_q;
 // Make sure dfi_rddata_en is synchronous
 reg dfi_rddata_en_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     dfi_rddata_en_q <= 1'b0;
 else
@@ -372,7 +372,7 @@ assign dfi_rddata_en_o   = dfi_rddata_en_q;
 //-----------------------------------------------------------------
 reg [1:0] dfi_rd_idx_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     dfi_rd_idx_q <= 2'b0;
 else if (dfi_rddata_valid_i)
@@ -380,14 +380,14 @@ else if (dfi_rddata_valid_i)
 
 reg [127:0]  rd_data_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     rd_data_q <= 128'b0;
 else if (dfi_rddata_valid_i)
     rd_data_q <= {dfi_rddata_i, rd_data_q[127:32]};
 
 reg rd_valid_q;
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     rd_valid_q <= 1'b0;
 else if (dfi_rddata_valid_i && dfi_rd_idx_q == 2'd3)
@@ -467,7 +467,7 @@ reg [COUNT_W-1:0]       count;
 //-----------------------------------------------------------------
 // Sequential
 //-----------------------------------------------------------------
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     count   <= {(COUNT_W) {1'b0}};

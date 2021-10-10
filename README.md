@@ -34,7 +34,7 @@ DLL-off mode (which this memory controller utilises) is listed as an optional fe
 Performance for sequential burst accesses is good, as a burst of the same type - read or write, will be pipelined to an already open row.  
 Currently, there is no capability for read/write re-ordering/coalescing, so random read/write performance will not be optimal (this might be addressed in future releases).
 
-On the Digitalent Arty A7 running at 50MHz (max 200MBytes/s of bandwidth available), performing sequential reads / writes;  
+On the Digilent Arty A7 running at 100MHz (max 400MBytes/s of bandwidth available), performing sequential reads / writes;  
 ![Performance](docs/artya7.png)
 
 As for area, on the Xilinx Artix 7 (XC7A35T), the area used by the core (plus a small UART to AXI-4 bridge);  

@@ -1,14 +1,14 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.1
+//                            V0.5
 //                     Ultra-Embedded.com
-//                        Copyright 2020
+//                     Copyright 2020-21
 //
 //                   admin@ultra-embedded.com
 //
 //                     License: Apache 2.0
 //-----------------------------------------------------------------
-// Copyright 2020 Ultra-Embedded.com
+// Copyright 2020-21 Ultra-Embedded.com
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -84,7 +84,7 @@ wire [31:0] arlen_ext_w   = {24'b0, axi_arlen_i};
 wire [31:0] awaddr_mask_w = ((awlen_ext_w + 1) * 4) - 1;
 wire [31:0] araddr_mask_w = ((arlen_ext_w + 1) * 4) - 1;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     ;
 else 
@@ -131,7 +131,7 @@ begin
         read_pending_r = read_pending_r - 4'd1;
 end
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     read_pending_q <= 4'b0;
 else 
@@ -154,7 +154,7 @@ begin
         write_pending_r = write_pending_r - 4'd1;
 end
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     write_pending_q <= 4'b0;
 else 
@@ -172,7 +172,7 @@ reg prio_rd_q;
 wire write_prio_w   = ~prio_rd_q || !axi_arvalid_i;
 wire read_prio_w    = prio_rd_q  || !awvalid_w;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     prio_rd_q <= 1'b0;
 // Start of write accepted
@@ -198,7 +198,7 @@ wire wr_cmd_accepted_w  = (axi_awvalid_i && axi_awready_o) || awvalid_q;
 wire wr_data_accepted_w = (axi_wvalid_i  && axi_wready_o);
 wire wr_data_last_w     = (axi_wvalid_i && axi_wready_o && axi_wlast_i);
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     awvalid_q <= 1'b0;
 else if (axi_awvalid_i && axi_awready_o && (!wr_data_accepted_w || !wr_data_last_w))
@@ -206,7 +206,7 @@ else if (axi_awvalid_i && axi_awready_o && (!wr_data_accepted_w || !wr_data_last
 else if (wr_data_accepted_w && wr_data_last_w)
     awvalid_q <= 1'b0;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     wfirst_q <= 1'b1;
 else if (wr_cmd_accepted_w && wr_data_accepted_w && !wr_data_last_w)
@@ -214,7 +214,7 @@ else if (wr_cmd_accepted_w && wr_data_accepted_w && !wr_data_last_w)
 else if (wr_data_accepted_w && wr_data_last_w)
     wfirst_q <= 1'b1;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     awaddr_q  <= 32'b0;
@@ -285,7 +285,7 @@ begin
     end
 end
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     wdata_q     <= 128'b0;
@@ -308,7 +308,7 @@ reg [7:0]   len_q;
 reg [3:0]   id_q;
 wire        ram_accept_w;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     addr_q       <= 32'b0;
@@ -413,7 +413,7 @@ wire         resp_accept_w;
 
 reg [7:0] resp_cnt_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     resp_cnt_q <= 8'b0;
 else if (resp_valid_w && resp_rd_w && resp_accept_w)
@@ -429,7 +429,7 @@ wire req_pop_w = resp_valid_w && ((resp_cnt_q == resp_len_w) || (!resp_rd_w && r
 reg [1:0]  resp_idx_q;
 wire [1:0] resp_idx_w = (resp_cnt_q == 8'd0) ? resp_offset_w : resp_idx_q;
 
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
     resp_idx_q <= 2'b0;
 else if (resp_valid_w && resp_rd_w && resp_accept_w)
@@ -544,7 +544,7 @@ reg [COUNT_W-1:0]       count;
 //-----------------------------------------------------------------
 // Sequential
 //-----------------------------------------------------------------
-always @ (posedge clk_i or posedge rst_i)
+always @ (posedge clk_i )
 if (rst_i)
 begin
     count   <= {(COUNT_W) {1'b0}};

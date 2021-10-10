@@ -1,14 +1,14 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.1
+//                            V0.5
 //                     Ultra-Embedded.com
-//                        Copyright 2020
+//                     Copyright 2020-21
 //
 //                   admin@ultra-embedded.com
 //
 //                     License: Apache 2.0
 //-----------------------------------------------------------------
-// Copyright 2020 Ultra-Embedded.com
+// Copyright 2020-21 Ultra-Embedded.com
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ module ddr3_axi
 // Params
 //-----------------------------------------------------------------
 #(
-     parameter DDR_MHZ          = 50
+     parameter DDR_MHZ          = 100
     ,parameter DDR_WRITE_LATENCY = 4
     ,parameter DDR_READ_LATENCY = 4
 )
@@ -253,7 +253,7 @@ u_axi
 //-----------------------------------------------------------------
 // DDR3 Controller
 //-----------------------------------------------------------------
-ddr3_axi_core
+ddr3_core
 #(
      .DDR_MHZ(DDR_MHZ)
     ,.DDR_WRITE_LATENCY(DDR_WRITE_LATENCY)
@@ -274,6 +274,11 @@ u_core
     ,.inport_error_o(ram_error_w)
     ,.inport_read_data_o(ram_read_data_w)
     ,.inport_resp_id_o(ram_resp_id_w)
+
+    ,.cfg_enable_i(1'b1)
+    ,.cfg_stb_i(1'b0)
+    ,.cfg_data_i(32'b0)
+    ,.cfg_stall_o()
 
     ,.dfi_address_o(dfi_address_o)
     ,.dfi_bank_o(dfi_bank_o)

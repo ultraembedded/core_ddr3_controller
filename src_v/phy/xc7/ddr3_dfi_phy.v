@@ -1,14 +1,14 @@
 //-----------------------------------------------------------------
 //              Lightweight DDR3 Memory Controller
-//                            V0.1
+//                            V0.5
 //                     Ultra-Embedded.com
-//                        Copyright 2020
+//                     Copyright 2020-21
 //
 //                   admin@ultra-embedded.com
 //
 //                     License: Apache 2.0
 //-----------------------------------------------------------------
-// Copyright 2020 Ultra-Embedded.com
+// Copyright 2020-21 Ultra-Embedded.com
 // 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //-----------------------------------------------------------------
-
 module ddr3_dfi_phy
 //-----------------------------------------------------------------
 // Params
@@ -42,6 +41,7 @@ module ddr3_dfi_phy
     // Inputs
      input           clk_i
     ,input           clk_ddr_i
+    ,input           clk_ddr90_i
     ,input           clk_ref_i
     ,input           rst_i
     ,input           cfg_valid_i
@@ -93,6 +93,16 @@ module ddr3_dfi_phy
 `define DDR_PHY_CFG_DLY_DQ_RST_R    21:20
 `define DDR_PHY_CFG_DLY_DQ_INC_R    23:22
 
+reg cfg_valid_q;
+
+always @ (posedge clk_i )
+if (rst_i)
+    cfg_valid_q <= 1'b0;
+else
+    cfg_valid_q <= cfg_valid_i;
+
+wire cfg_valid_pulse_w = cfg_valid_i & ~cfg_valid_q;
+
 reg [2:0] rd_lat_q;
 
 always @ (posedge clk_i )
@@ -117,7 +127,7 @@ reg [1:0] dq_delay_inc_q;
 always @ (posedge clk_i )
 if (rst_i)
     dqs_delay_rst_q <= 2'b0;
-else if (cfg_valid_i)
+else if (cfg_valid_pulse_w)
     dqs_delay_rst_q <= cfg_i[`DDR_PHY_CFG_DLY_DQS_RST_R];
 else
     dqs_delay_rst_q <= 2'b0;
@@ -125,7 +135,7 @@ else
 always @ (posedge clk_i )
 if (rst_i)
     dqs_delay_inc_q <= 2'b0;
-else if (cfg_valid_i)
+else if (cfg_valid_pulse_w)
     dqs_delay_inc_q <= cfg_i[`DDR_PHY_CFG_DLY_DQS_INC_R];
 else
     dqs_delay_inc_q <= 2'b0;
@@ -133,7 +143,7 @@ else
 always @ (posedge clk_i )
 if (rst_i)
     dq_delay_rst_q <= 2'b0;
-else if (cfg_valid_i)
+else if (cfg_valid_pulse_w)
     dq_delay_rst_q <= cfg_i[`DDR_PHY_CFG_DLY_DQ_RST_R];
 else
     dq_delay_rst_q <= 2'b0;
@@ -141,7 +151,7 @@ else
 always @ (posedge clk_i )
 if (rst_i)
     dq_delay_inc_q <= 2'b0;
-else if (cfg_valid_i)
+else if (cfg_valid_pulse_w)
     dq_delay_inc_q <= cfg_i[`DDR_PHY_CFG_DLY_DQ_INC_R];
 else
     dq_delay_inc_q <= 2'b0;
@@ -1275,7 +1285,7 @@ OSERDESE2
 )
 u_serdes_dqs0
 (
-   .CLK(clk_ddr_i)
+   .CLK(clk_ddr90_i)
   ,.CLKDIV(clk_i)
   ,.D1(0)
   ,.D2(0)
@@ -1315,7 +1325,7 @@ OSERDESE2
 )
 u_serdes_dqs1
 (
-   .CLK(clk_ddr_i)
+   .CLK(clk_ddr90_i)
   ,.CLKDIV(clk_i)
   ,.D1(0)
   ,.D2(0)
@@ -1360,14 +1370,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("DATA")
+    ,.SIGNAL_PATTERN("CLOCK")
 )
 u_dqs_delay0
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dqs_delay_inc_q[0])
-    ,.INC(dqs_delay_inc_q[0])    // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                     // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dqs_in_w[0])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1387,14 +1397,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("DATA")
+    ,.SIGNAL_PATTERN("CLOCK")
 )
 u_dqs_delay1
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dqs_delay_inc_q[1])
-    ,.INC(dqs_delay_inc_q[1])    // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                     // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dqs_in_w[1])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1432,14 +1442,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay0
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[0])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1509,14 +1519,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay1
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[1])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1586,14 +1596,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay2
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[2])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1663,14 +1673,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay3
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[3])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1740,14 +1750,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay4
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[4])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1817,14 +1827,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay5
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[5])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1894,14 +1904,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay6
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[6])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -1971,14 +1981,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay7
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[0])
-    ,.INC(dq_delay_inc_q[0])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[7])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2048,14 +2058,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay8
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[8])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2125,14 +2135,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay9
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[9])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2202,14 +2212,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay10
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[10])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2279,14 +2289,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay11
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[11])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2356,14 +2366,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay12
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[12])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2433,14 +2443,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay13
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[13])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2510,14 +2520,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay14
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[14])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)
@@ -2587,14 +2597,14 @@ IDELAYE2
     ,.HIGH_PERFORMANCE_MODE ("TRUE")
     ,.REFCLK_FREQUENCY(REFCLK_FREQUENCY)
     ,.PIPE_SEL("FALSE")
-    ,.SIGNAL_PATTERN("CLOCK")
+    ,.SIGNAL_PATTERN("DATA")
 )
 u_dq_delay15
 (
      .C(clk_i)
     ,.REGRST(1'b0)
     ,.CE(dq_delay_inc_q[1])
-    ,.INC(dq_delay_inc_q[1])  // Increment/decrement number of tap delays.
+    ,.INC(1'b1)                    // Increment/decrement number of tap delays.
     ,.DATAIN(1'b0)
     ,.IDATAIN(dq_in_w[15])       // Data input for IDELAY from the IBUF.
     ,.LDPIPEEN(1'b0)

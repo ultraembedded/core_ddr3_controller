@@ -1,0 +1,66 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Sun Oct 10 15:27:51 2021
+[*]
+[timestart] 61335800
+[size] 2560 1385
+[pos] -1 -1
+*-16.000000 61733200 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] testbench.
+[treeopen] testbench.u_ddr_core.
+[sst_width] 202
+[signals_width] 542
+[sst_expanded] 1
+[sst_vpaned_height] 420
+@28
+testbench.clk
+testbench.clk_ddr
+testbench.clk_ddr_dqs
+@29
+testbench.clk_ref
+@200
+-
+@800200
+-DDR
+@28
+testbench.u_ddr_core.dfi_reset_n_o
+testbench.ddr3_clk_w
+testbench.ddr3_cke_w
+testbench.ddr3_we_n_w
+testbench.ddr3_cas_n_w
+testbench.ddr3_ras_n_w
+testbench.ddr3_cs_n_w
+testbench.ddr3_ba_w[2:0]
+@22
+testbench.ddr3_addr_w[13:0]
+@28
+testbench.ddr3_dm_w[1:0]
+(1)testbench.ddr3_dqs_p_w[1:0]
+@22
+testbench.ddr3_dq_w[15:0]
+@1000200
+-DDR
+@200
+-
+@800200
+-INPORT
+@28
+testbench.ram_rd
+@22
+testbench.ram_wr[15:0]
+testbench.ram_addr[31:0]
+testbench.ram_req_id[15:0]
+testbench.ram_write_data[127:0]
+@28
+testbench.ram_accept
+@200
+-
+@28
+testbench.ram_ack
+@22
+testbench.ram_resp_id[15:0]
+testbench.ram_read_data[127:0]
+@1000200
+-INPORT
+[pattern_trace] 1
+[pattern_trace] 0

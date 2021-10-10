@@ -8,6 +8,7 @@ module artix7_pll
     ,output          clkout0_o
     ,output          clkout1_o
     ,output          clkout2_o
+    ,output          clkout3_o
 );
 
 
@@ -23,6 +24,8 @@ wire pll_clkout1_w;
 wire pll_clkout1_buffered_w;
 wire pll_clkout2_w;
 wire pll_clkout2_buffered_w;
+wire pll_clkout3_w;
+wire pll_clkout3_buffered_w;
 
 // Input buffering
 IBUF IBUF_IN
@@ -40,21 +43,24 @@ PLLE2_BASE
     .CLKFBOUT_MULT(12),     // VCO=1200MHz
 
     // CLKOUTx_DIVIDE: Divide amount for each CLKOUT(1-128)
-    .CLKOUT0_DIVIDE(24), // CLK0=50MHz
-    .CLKOUT1_DIVIDE(6), // CLK1=200MHz
+    .CLKOUT0_DIVIDE(12), // CLK0=100MHz
+    .CLKOUT1_DIVIDE(3), // CLK1=400MHz
     .CLKOUT2_DIVIDE(6), // CLK2=200MHz
+    .CLKOUT3_DIVIDE(3), // CLK3=400MHz
 
     // CLKOUTx_DUTY_CYCLE: Duty cycle for each CLKOUT
     .CLKOUT0_DUTY_CYCLE(0.5),
     .CLKOUT1_DUTY_CYCLE(0.5),
     .CLKOUT2_DUTY_CYCLE(0.5),
     .CLKOUT3_DUTY_CYCLE(0.5),
+    .CLKOUT4_DUTY_CYCLE(0.5),
 
     // CLKOUTx_PHASE: Phase offset for each CLKOUT
     .CLKOUT0_PHASE(0.0),
     .CLKOUT1_PHASE(0.0),
     .CLKOUT2_PHASE(0.0),
-    .CLKOUT3_PHASE(0.0),
+    .CLKOUT3_PHASE(90.0),
+    .CLKOUT4_PHASE(0.0),
 
     .DIVCLK_DIVIDE(1),            // Master division value (1-56)
     .REF_JITTER1(0.0),            // Ref. input jitter in UI (0.000-0.999)
@@ -66,7 +72,7 @@ u_pll
     .CLKOUT0(pll_clkout0_w),
     .CLKOUT1(pll_clkout1_w),
     .CLKOUT2(pll_clkout2_w),
-    .CLKOUT3(),
+    .CLKOUT3(pll_clkout3_w),
     .CLKOUT4(),
     .CLKOUT5(),
     .LOCKED(),
@@ -104,6 +110,14 @@ assign clkout1_o = pll_clkout1_buffered_w;
 assign pll_clkout2_buffered_w = pll_clkout2_w;
 
 assign clkout2_o = pll_clkout2_buffered_w;
+
+
+//-----------------------------------------------------------------
+// CLK_OUT3
+//-----------------------------------------------------------------
+assign pll_clkout3_buffered_w = pll_clkout3_w;
+
+assign clkout3_o = pll_clkout3_buffered_w;
 
 
 

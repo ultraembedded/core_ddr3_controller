@@ -29,15 +29,17 @@ module top
 wire clk_w;
 wire rst_w;
 wire clk_ddr_w;
+wire clk_ddr_dqs_w;
 wire clk_ref_w;
 
 artix7_pll
 u_pll
 (
      .clkref_i(clk100mhz)
-    ,.clkout0_o(clk_w)     // 50
-    ,.clkout1_o(clk_ddr_w) // 200
-    ,.clkout2_o(clk_ref_w) // 200
+    ,.clkout0_o(clk_w)         // 100
+    ,.clkout1_o(clk_ddr_w)     // 400
+    ,.clkout2_o(clk_ref_w)     // 200
+    ,.clkout3_o(clk_ddr_dqs_w) // 400 (phase shifted 90 degrees)
 );
 
 reset_gen
@@ -99,7 +101,7 @@ ddr3_axi
 #(
      .DDR_WRITE_LATENCY(4)
     ,.DDR_READ_LATENCY(4)
-    ,.DDR_MHZ(50)
+    ,.DDR_MHZ(100)
 )
 u_ddr
 (
@@ -154,12 +156,18 @@ u_ddr
 );
 
 ddr3_dfi_phy
+#(
+     .DQS_TAP_DELAY_INIT(27)
+    ,.DQ_TAP_DELAY_INIT(0)
+    ,.TPHY_RDLAT(5)
+)
 u_phy
 (
      .clk_i(clk_w)
     ,.rst_i(rst_w)
 
     ,.clk_ddr_i(clk_ddr_w)
+    ,.clk_ddr90_i(clk_ddr_dqs_w)
     ,.clk_ref_i(clk_ref_w)
 
     ,.cfg_valid_i(1'b0)
@@ -185,11 +193,11 @@ u_phy
     ,.ddr3_ck_p_o(ddr3_ck_p)
     ,.ddr3_ck_n_o(ddr3_ck_n)
     ,.ddr3_cke_o(ddr3_cke)
-    ,.ddr3_reset_n_o()
+    ,.ddr3_reset_n_o(ddr3_reset_n)
     ,.ddr3_ras_n_o(ddr3_ras_n)
     ,.ddr3_cas_n_o(ddr3_cas_n)
     ,.ddr3_we_n_o(ddr3_we_n)
-    ,.ddr3_cs_n_o()
+    ,.ddr3_cs_n_o(ddr3_cs_n)
     ,.ddr3_ba_o(ddr3_ba)
     ,.ddr3_addr_o(ddr3_addr[13:0])
     ,.ddr3_odt_o(ddr3_odt)
@@ -198,9 +206,6 @@ u_phy
     ,.ddr3_dqs_p_io(ddr3_dqs_p)
     ,.ddr3_dqs_n_io(ddr3_dqs_n)    
 );
-
-assign ddr3_reset_n = 1'b1;
-assign ddr3_cs_n    = 1'b0;
 
 //-----------------------------------------------------------------
 // User design
